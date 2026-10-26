@@ -22,6 +22,11 @@ export interface TrnchActionProviderConfig {
    * TRNCH bot API key. Optional: without it, a key is created on first use by signing a message with the wallet (no funds move).
    */
   apiKey?: string;
+
+  /**
+   * Your TRNCH referral code. Optional: every swap made with a key this provider creates pays its owner a share of the TRNCH fee.
+   */
+  ref?: string;
 }
 
 interface BuiltSwap {
@@ -36,6 +41,7 @@ interface BuiltSwap {
  */
 export class TrnchActionProvider extends ActionProvider<EvmWalletProvider> {
   #apiKey: string | undefined;
+  #ref: string | undefined;
 
   /**
    * Constructor for the TrnchActionProvider.
@@ -45,6 +51,7 @@ export class TrnchActionProvider extends ActionProvider<EvmWalletProvider> {
   constructor(config: TrnchActionProviderConfig = {}) {
     super("trnch", []);
     this.#apiKey = config.apiKey || process.env.TRNCH_API_KEY;
+    this.#ref = config.ref || process.env.TRNCH_REF;
   }
 
   /**
@@ -220,7 +227,13 @@ Inputs: tokenId (from get_trnch_heat) or token (address), percent, optional slip
     const signature = await walletProvider.signMessage(message);
     const reg = await this.#request("/register", {
       method: "POST",
-      body: JSON.stringify({ wallet, message, signature, label: "agentkit" }),
+      body: JSON.stringify({
+        wallet,
+        message,
+        signature,
+        label: "agentkit",
+        ...(this.#ref ? { ref: this.#ref } : {}),
+      }),
     });
     this.#apiKey = reg.key as string;
     return this.#apiKey;

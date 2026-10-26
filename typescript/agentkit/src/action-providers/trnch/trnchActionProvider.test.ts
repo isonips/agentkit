@@ -79,6 +79,29 @@ describe("TrnchActionProvider", () => {
     );
   });
 
+  it("creates a key by wallet signature and passes the referral code", async () => {
+    const fresh = trnchActionProvider({ ref: "r-abcd1234" });
+    wallet.signMessage = jest.fn().mockResolvedValue("0xsig");
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(ok({ message: "TRNCH Bot API key" }))
+      .mockResolvedValueOnce(ok({ key: "trnch_bot_new" }))
+      .mockResolvedValueOnce(ok({ heat: [], new: [], nextSince: 1 }));
+
+    const result = JSON.parse(await fresh.getHeat(wallet, { since: null }));
+
+    expect(result.success).toBe(true);
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body)).toEqual({
+      wallet: "0x1234567890123456789012345678901234567890",
+      message: "TRNCH Bot API key",
+      signature: "0xsig",
+      label: "agentkit",
+      ref: "r-abcd1234",
+    });
+    expect((global.fetch as jest.Mock).mock.calls[2][1].headers.authorization).toBe(
+      "Bearer trnch_bot_new",
+    );
+  });
+
   it("returns the API error without sending anything", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: false,
